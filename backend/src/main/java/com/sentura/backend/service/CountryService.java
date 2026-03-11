@@ -23,19 +23,33 @@ public class CountryService {
 
     private void fetchFromApi() {
         RestTemplate restTemplate = new RestTemplate();
-        String url = "https://restcountries.com/v3.1/all";
-        List<Map<String, Object>> response = restTemplate.getForObject(url, List.class);
+        String url = "https://restcountries.com/v3.1/all?fields=name,capital,region,population,flags";
 
-        this.cache = response.stream().map(map -> {
-            Country c = new Country();
-            c.setName((String) ((Map) map.get("name")).get("common"));
-            c.setCapital(map.get("capitals") != null ? ((List<String>) map.get("capitals")).get(0) : "N/A");
-            c.setRegion((String) map.get("region"));
-            c.setPopulation(((Number) map.get("population")).longValue());
-            c.setFlag((String) ((Map) map.get("flags")).get("png"));
-            return c;
-        }).collect(Collectors.toList());
-        lastFetched = System.currentTimeMillis();
+        try {
+            List<Map<String, Object>> response = restTemplate.getForObject(url, List.class);
+
+            if (response != null) {
+                this.cache = response.stream().map(map -> {
+                    Country c = new Country();
+                    Map<String, Object> nameObj = (Map<String, Object>) map.get("name");
+                    c.setName((String) nameObj.get("common"));
+
+                    List<String> capitals = (List<String>) map.get("capital");
+                    c.setCapital(capitals != null && !capitals.isEmpty() ? capitals.get(0) : "N/A");
+
+                    c.setRegion((String) map.get("region"));
+                    c.setPopulation(((Number) map.get("population")).longValue());
+                    Map<String, Object> flagsObj = (Map<String, Object>) map.get("flags");
+                    c.setFlag((String) flagsObj.get("png"));
+
+                    return c;
+                }).collect(Collectors.toList());
+
+                lastFetched = System.currentTimeMillis();
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching countries: " + e.getMessage());
+        }
     }
 }
 
